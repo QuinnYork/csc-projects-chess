@@ -18,6 +18,7 @@ public abstract class Piece {
 	public Piece(boolean white) 
 	{
 		setWhite(white);
+		killed = false;
 	}
 	
 	public boolean isWhite () throws NullPointerException

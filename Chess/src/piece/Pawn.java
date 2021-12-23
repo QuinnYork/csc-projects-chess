@@ -16,7 +16,25 @@ public class Pawn extends Piece {
 			throw new IllegalArgumentException("Move is out of bounds.");
 		else if (end.getPiece().isWhite() == this.isWhite() || !end.getPiece().isWhite() == !this.isWhite())
             return false;
-		return false;
+		int diffX = Math.abs(start.getX() - end.getX());
+		int diffY = Math.abs(start.getY() - end.getY());
+		if (isWhite() && start.getY() == 6 || !isWhite() && start.getY() == 1) 
+		{
+			if (diffY > 2)
+				return false;
+			else if (diffX == 1 && diffY == 1)
+				return end.getPiece().isWhite() != this.isWhite() || !end.getPiece().isWhite() == this.isWhite();
+			else {
+				for (int i = 0; i < diffY; i++) 
+				{
+					if (board.getSpace(start.getX(), start.getY() + i).getPiece().isWhite() == this.isWhite() || 
+			    			!board.getSpace(start.getX(), start.getY() + i).getPiece().isWhite() == !this.isWhite()) 
+			    	{ return false; }
+				}
+			}
+		}
+		boolean valid = (diffY == 1);
+		return (end.getPiece().isWhite() == this.isWhite() || !end.getPiece().isWhite() == !this.isWhite()) && valid;
 	}
 
 }

@@ -31,5 +31,10 @@ public class Move {
 		return end;
 	}
 	
+	public boolean isValid()
+	{
+		return start.getPiece().canMove(b, start, end);
+	}
+	
 	
 }
