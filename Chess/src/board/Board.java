@@ -69,43 +69,43 @@ public class Board {
 		}
 	}
 	
-	/**
-	 * Given the move, the board will be updated accordingly.
-	 * @param m
-	 */
-	public State update(Move m, State s) //TODO: possibly create an interface that checks for conflict in the given move object in the param.
-	{						   // could also add a method in move that checks for conflict
-		if (m.isValid())
+	public State update(Move m, State s)
+	{
+		if (m.isValid()) // valid move for the piece
 		{
-			if (!(m.getStart().getPiece() instanceof King) && s != State.CHECK)
+			if (s == State.CHECK_B || s == State.CHECK_B) // w/b is in check
 			{
 				Piece p1 = m.getStart().getPiece();
-				Piece p2 = m.getEnd().getPiece();
-				if (p2.isWhite() != p1.isWhite()) { p2.setKilled(true); }
-				board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p1);
-				board[m.getStart().getX()][m.getStart().getY()].setPiece(null);
-				return detectCheck(m, s);
-			} else {
-				if (!(m.getStart().getPiece() instanceof King) && s == State.CHECK)
+				if (p1 instanceof King) { // in check you must move your king
+					State s1 = detectCheck(m, s);
+					if (s1 == State.CHECK_B || s1 == State.CHECK_W) { return State.REDO; } // kings move keeps you in check, so redo.
+					// else, king makes move and is not in check anymore.
+					Piece p2 = m.getEnd().getPiece();
+					if (p2.isWhite() != p1.isWhite()) { p2.setKilled(true); }
+					board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p1);
+					board[m.getStart().getX()][m.getStart().getY()].setPiece(null);
+					return s1;
+				} else { // in check but you dont try to move king out of check. redo move.
 					return State.REDO;
-				else if (m.getStart().getPiece() instanceof King && s == State.CHECK) {
-					if (detectCheck(m, s) == State.REDO)
-						return State.REDO;
-					else {
-						Piece p1 = m.getStart().getPiece();
-						Piece p2 = m.getEnd().getPiece();
-						if (p2.isWhite() != p1.isWhite()) { p2.setKilled(true); }
-						board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p1);
-						board[m.getStart().getX()][m.getStart().getY()].setPiece(null);
-						return State.ACTIVE;
-					}
+				}
+			} else if (s == State.CHECKMATE) // checkmate
+				return State.END;
+			else { // not in check
+				State s1 = detectCheck(m, s);
+				Piece p1 = m.getStart().getPiece();
+				if (s1 == State.CHECK_W && p1.isWhite() ||
+						s1 == State.CHECK_B && !p1.isWhite()) { // invalid move. move is done by white/black and it puts w/b in check.
+					return State .REDO;
+				} else if (s1 == State.CHECKMATE) { return s1; } 
+				else { // not in check and move is valid, edit board as such
+					Piece p2 = m.getEnd().getPiece();
+					if (p2.isWhite() != p1.isWhite()) { p2.setKilled(true); }
+					board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p1);
+					board[m.getStart().getX()][m.getStart().getY()].setPiece(null);
+					return s1;
 				}
 			}
-		} else {
-			System.out.println("Invalid move. Try again.");
-			return State.REDO;
-		}
-		return State.ACTIVE;
+		} return State.REDO;
 	}
 	
 	public Space[][] getBoard()
@@ -118,13 +118,62 @@ public class Board {
 		return board[x][y]; 
 	}
 	
-	private State detectCheck(Move m, State s)
+	public State detectCheck(Move m, State s)
 	{
-		
-		return null;
+		//TODO: detect check by parsing through board for every piece that is not the same color as the king.
+		// move can put a player in check and it can keep a player in check
+		//ex/ white moves king in or out of check into check with move. update should not allow this move to happen.
+		Piece p1 = m.getStart().getPiece();
+		Piece p2 = m.getEnd().getPiece(); // if this isn't null, this check could overwrite this piece if move can't be made and make it null 
+		if (p1 instanceof King) { // p1 is king. check if move will put it in check/mate
+			board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p1);
+			board[m.getStart().getX()][m.getStart().getY()].setPiece(null);
+			for (Space[] b: board)
+				for (Space s1 : b) {
+					if (s1.getPiece() != null) {
+						Move moveCheck = new Move(null, s1, m.getEnd());
+						if (moveCheck.isValid()) {
+							if (p1.isWhite()) {
+								board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p2);
+								board[m.getStart().getX()][m.getStart().getY()].setPiece(p1);
+								return State.CHECK_W;
+							} else { //TODO: could have update() just not change the board if it will put me in check.
+								board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p2);
+								board[m.getStart().getX()][m.getStart().getY()].setPiece(p1);
+								return State.CHECK_B;
+							}
+						}
+					}
+				}
+			return State.ACTIVE;
+				
+		} else { // p1 is not a king, check if move will put the opposing teams king in check
+			board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p1); // move 
+			board[m.getStart().getX()][m.getStart().getY()].setPiece(null);
+			for (Space[] b: board)
+				for (Space s1 : b) {
+					if (s1.getPiece().isWhite() != p1.isWhite()) {
+						Move moveCheck = new Move(null, m.getEnd(), s1);
+						if (s1.getPiece() instanceof King && moveCheck.isValid()) {
+							if (s1.getPiece().isWhite()) {
+								board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p2);
+								board[m.getStart().getX()][m.getStart().getY()].setPiece(p1);
+								return State.CHECK_W; // check for checkmate 
+							} else { //TODO: could have update() just not change the board if it will put me in check.
+								board[m.getEnd().getX()][m.getEnd().getY()].setPiece(p2);
+								board[m.getStart().getX()][m.getStart().getY()].setPiece(p1);
+								return State.CHECK_B;
+							}
+						}
+
+					}
+				}
+			return State.ACTIVE;
+			
+		}
 	}
 	
-	private boolean detectCheckmate(Move m)
+	public boolean detectCheckmate() // used when a king is put in check. try all moves for king.
 	{
 		
 		return false;
